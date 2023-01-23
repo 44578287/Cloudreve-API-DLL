@@ -70,7 +70,9 @@
                     Name(FilesPath);
                     Size(FilesPath);
                     policy_id = policy;
-                    last_modified = DateTimeOffset.Now.ToUnixTimeSeconds();//获取时间戳(Unix)
+                    //last_modified = DateTimeOffset.Now.ToUnixTimeSeconds();//获取时间戳(Unix)
+                    DateTimeOffset TempTime = File.GetLastWriteTime(FilesPath);
+                    last_modified = TempTime.ToUnixTimeMilliseconds();
                     return UpdataJson(this);
                 }
                 return null;
