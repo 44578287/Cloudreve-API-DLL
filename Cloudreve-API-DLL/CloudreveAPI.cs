@@ -1044,11 +1044,12 @@ namespace Cloudreve_API_DLL
                 try
                 {
                     string KeyPath = CookiePath + "/KEY";//KEY位置;
-                    InitializationEncrypt(KeyPath, "44578287");//初始化KEY
-                    this.UUID = DecryptEncrypt(KeyPath, "44578287")!;//解密KEY 获取UUID
                     if (!Directory.Exists(CookiePath))//如果不存在就创建file文件夹　　             　　              
                         Directory.CreateDirectory(CookiePath);//创建该文件夹
 
+                    InitializationEncrypt(KeyPath, "44578287");//初始化KEY
+                    this.UUID = DecryptEncrypt(KeyPath, "44578287")!;//解密KEY 获取UUID
+                    
                     DirectoryInfo CookiePaths = new DirectoryInfo(CookiePath);
                     DirectoryInfo[] DirPaths = CookiePaths.GetDirectories();
                     foreach (var CookieArray in DirPaths)
