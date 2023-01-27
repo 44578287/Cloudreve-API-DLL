@@ -92,6 +92,10 @@
             /// 时间戳
             /// </summary>
             public int expires { get; set; }
+            /// <summary>
+            /// 直接上传URL
+            /// </summary>
+            public List<string> uploadURLs { get; set; }
         }
         /// <summary>
         /// PUT 上传文件返回Json
