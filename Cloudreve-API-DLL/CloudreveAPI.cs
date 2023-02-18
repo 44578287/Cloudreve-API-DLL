@@ -203,6 +203,94 @@ namespace Cloudreve_API_DLL
                 return HttpRequestToStringData;
             }
             /// <summary>
+            /// 上传文件至云盘(包含不同存储方案)
+            /// </summary>
+            /// <param name="Url">Cloudreve服务器地址</param>
+            /// <param name="cookie">登入返还的Cookie</param>
+            /// <param name="FilesPath">本地文件路径</param>
+            /// <param name="policy">Cloudreve的存储策略</param>
+            /// <param name="policy_type">Cloudreve的上传目标存储方案</param>
+            /// <param name="CloudFilesPath">云盘上传路径(默认根目录"/")</param>
+            /// <param name="sessionID">任务ID 可替PUT请求 前提任务ID没有被清除</param>
+            /// <param name="SliceSize">上传分片大小</param>
+            /// <param name="Slice">上传任务分片</param>
+            /// <param name="ScreenOut">屏幕显示输出</param>
+            /// <returns>string 类型 上传状态</returns>
+            public static string? UpFileAuto(string Url, string? cookie, string FilesPath, string? policy = null,string? policy_type = null, string CloudFilesPath = "/", string? sessionID = null, int SliceSize = 0, int Slice = 0, bool ScreenOut = true)
+            {
+                string? HttpRequestToStringData = null;
+                List<string> UploadPtahs = new();
+                PUT_UploadFilesReturnJson? PUT_UploadFilesReturnJson = null;
+                if (sessionID == null)//如果传入的sessionID不是null则直接进行Cloudreve的POST(第二步)
+                {
+                    if (policy == null || policy_type == null)
+                    {
+                        var temp = GetDirectory(Url,cookie,ScreenOut:false);
+                        policy = temp!.data!.policy.id;
+                        policy_type = temp!.data!.policy.type;
+                    }
+                    //-----------------------第一步PUT-----------------------
+                    PUT_UploadFilesDataJson Upload = new();
+                    string? UploadJson = Upload.Updata(FilesPath, policy, CloudFilesPath);
+                    string? UploadReturnJson = HttpRequestToString(Url + "/api/v3/file/upload/", cookie: cookie, httpMod: HttpMods.PUT, data: UploadJson);//发送上传请求
+                    if (UploadReturnJson == null)//如果是null那就是连服务器都访问不上
+                    {
+                        Logger.WriteError("发送上传请求失败(PUT)!因为上面的原因...");//打印至日志
+                        if (ScreenOut)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("发送上传请求失败(PUT)!因为上面的原因...");
+                            Console.ForegroundColor = ConsoleColor.White;
+                        }
+                        return null;
+                    }
+                    PUT_UploadFilesReturnJson = JsonSerializer.Deserialize<PUT_UploadFilesReturnJson>(UploadReturnJson);
+                    if (PUT_UploadFilesReturnJson?.code != 0)
+                    {
+                        Logger.WriteError("上传失败(PUT)!因为:" + PUT_UploadFilesReturnJson?.msg + " #文件名:" + Path.GetFileName(FilesPath) + " 本地路径" + Path.GetDirectoryName(FilesPath) + " 云盘路径:" + CloudFilesPath);//打印至日志
+                        if (ScreenOut)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("上传失败(PUT)!因为:" + PUT_UploadFilesReturnJson?.msg + " #文件名:" + Path.GetFileName(FilesPath) + " 本地路径" + Path.GetDirectoryName(FilesPath) + " 云盘路径:" + CloudFilesPath);
+                            Console.ForegroundColor = ConsoleColor.White;
+                        }
+                        return UploadJson;
+                    }
+                    sessionID = PUT_UploadFilesReturnJson.data?.sessionID;
+                    SliceSize = (int)PUT_UploadFilesReturnJson.data?.chunkSize!;
+                    if (SliceSize == 0)
+                        SliceSize = (int)new FileInfo(FilesPath).Length;
+                    double ExpectedSliceNumber = Math.Ceiling((double)(new FileInfo(FilesPath).Length / SliceSize));
+                    if (SliceSize == (int)new FileInfo(FilesPath).Length)
+                        ExpectedSliceNumber -= 1;
+                    Logger.WriteInfor("发送上传请求成功(PUT)!ID:" + sessionID + " 预估分片数量:" + ExpectedSliceNumber);//打印至日志
+                }
+                else
+                { 
+                
+                }
+                //-----------------------第二步上传文件-----------------------
+                switch (policy_type)//判断上传文件目标存储方案
+                {
+                    case ("local")://本地存储
+                        for (int i = 0; i < (new FileInfo(FilesPath).Length / SliceSize) + 1; i++)//生成上传URL
+                        {
+                            UploadPtahs.Add(Url + "/api/v3/file/upload/" + sessionID + "/" + i);
+                        }
+                        HttpRequestToStringData = UploadFile(UploadPtahs, httpMod: HttpMods.POST_UPDATA, FilesPath: FilesPath, SliceSize: SliceSize,cookie:cookie);////向Cloudreve上传文件+确认
+                        break;
+                    case ("onedrive")://onedrive
+                        UploadPtahs = PUT_UploadFilesReturnJson!.data!.uploadURLs;
+                        HttpRequestToStringData = UploadFile(UploadPtahs,httpMod:HttpMods.PUT_UPDATA,FilesPath: FilesPath,SliceSize: SliceSize);//上传文件
+                        HttpRequestToStringData = HttpRequestToString($"{Url}/api/v3/callback/onedrive/finish/{sessionID}",cookie,data:"{}",httpMod:HttpMods.POST);//向Cloudreve确认
+                        break;
+                    default://找不当存储方案
+                        throw new InvalidOperationException("找不存储方案(或许是我还没做呢?)");
+                }
+
+                return null;
+            }
+            /// <summary>
             /// 删除上传文件列队
             /// </summary>
             /// <param name="Url">Cloudreve服务器地址</param>

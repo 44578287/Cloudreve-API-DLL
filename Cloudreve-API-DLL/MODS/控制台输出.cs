@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Cloudreve_API_DLL.MODS
 {
-    internal class ConsolePrint
+    public class ConsolePrint
     {
         /// <summary>
         /// 文件大小转换

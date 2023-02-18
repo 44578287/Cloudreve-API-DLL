@@ -87,7 +87,7 @@
             /// <summary>
             /// 文件大小
             /// </summary>
-            public int chunkSize { get; set; }
+            public long chunkSize { get; set; }
             /// <summary>
             /// 时间戳
             /// </summary>
